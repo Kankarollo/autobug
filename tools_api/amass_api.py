@@ -6,7 +6,7 @@ class Amass_API():
     def __init__(self):
         self.path = "amass"
 
-    def scan_subdomains(self, domains, passive=True, save_to_file=False):
+    def scan_subdomains(self, domains, passive=True, save_to_file=True):
         logger.info(f"Scanning subdomains with {self.path}......")
         command = [self.path,"enum", "-d", domains]
         if passive:
