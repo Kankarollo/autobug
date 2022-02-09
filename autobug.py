@@ -3,6 +3,7 @@ from ast import arg
 from pyfiglet import Figlet
 import tools_api
 import logging
+import re
 
 from tools_api.amass_api import Amass_API
 
@@ -19,11 +20,19 @@ consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
 logger.addHandler(consoleHandler)
 
+def is_inputSafe(user_input):
+    re_pattern = re.compile("^\w{3,}\.[a-z]{2,}$")
+    return re_pattern.match(user_input)
+
 def main(parser:argparse.ArgumentParser):
     logger.info("Starting program...")
     if parser.scan_domain:
+        domain = parser.scan_domain
+        if not is_inputSafe(domain):
+            print("Domain has wrong format")
+            return -1
         amass_api = Amass_API()
-        subdomains = amass_api.scan_subdomains(parser.scan_domain)
+        subdomains = amass_api.scan_subdomains(domain)
         print(subdomains)
     logger.info("Autobug ended successfully.")
 
