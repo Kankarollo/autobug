@@ -22,3 +22,9 @@
 ### Recon of scope
 - amass
 - httpx
+- masscan
+- github-subdomains.py
+- shuffledns
+### Postrecon
+- nmap
+- brutespray - service scanning
