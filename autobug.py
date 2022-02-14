@@ -1,4 +1,5 @@
 import argparse
+import git
 from pyfiglet import Figlet
 import logging
 import re
@@ -6,6 +7,7 @@ import os
 
 from tools_api.amass_api import Amass_API
 from tools_api.httpx_api import Httpx_API
+from tools_api.github_subdomain_api import GithubSubdomain_API
 
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
 DATABASE_DIR = os.path.join(ROOT_DIR,"database")
@@ -26,45 +28,68 @@ def is_inputSafe(user_input):
     re_pattern = re.compile("^\w{3,}\.[a-z]{2,}$")
     return re_pattern.match(user_input)
 
+def perform_github_subdomain_scan(domain,scan_title):
+    SCAN_DIR = os.path.join(DATABASE_DIR,scan_title)
+    github_scan = GithubSubdomain_API()
+    github_result_path = os.path.join(SCAN_DIR,f"github_scan_{scan_title}.txt")
+    github_scan.find_subdomains(domain, github_result_path)
+    return github_result_path
+
 def perform_amass_scan(domain, scan_title):
     SCAN_DIR = os.path.join(DATABASE_DIR,scan_title)
     if not os.path.exists(SCAN_DIR):
          os.mkdir(SCAN_DIR)
     amass_api = Amass_API()
-    domain_list = []
-    if os.path.isfile(domain):
-        with open(domain,'r') as file:
-            domain_list = file.read().split()
+    if not is_inputSafe(domain):
+        print(f"Domain: '{domain}' has wrong format")
     else:
-        domain_list = [domain]
-    amass_result = []
-    for domain in domain_list:
-        if not is_inputSafe(domain):
-            print(f"Domain: '{domain}' has wrong format")
-        else:
-            amass_result.extend(amass_api.scan_subdomains(domain))
-    amass_result_path = os.path.join(SCAN_DIR,f"amass_scan_{scan_title}.txt")
-    with open(amass_result_path,'w') as file:
-        result = "\n".join(amass_result)
-        file.write(result)
+        amass_result_path = os.path.join(SCAN_DIR,f"amass_scan_{scan_title}.txt")
+        amass_api.find_subdomains(domain,amass_result_path)
     return amass_result_path
 
 def perform_httpx_scan(amass_result_path, scan_title):
     httpx_api = Httpx_API()
     SCAN_DIR = os.path.join(DATABASE_DIR,scan_title)
-    httpx_result = httpx_api.scan_from_file(amass_result_path)
     httpx_result_path = os.path.join(SCAN_DIR,f"httpx_scan_{scan_title}.txt")
-    with open(httpx_result_path,'w') as file:
-        file.write(httpx_result)
+    httpx_api.scan_from_file(amass_result_path,httpx_result_path)
+    return httpx_result_path
+
+def merge_files(domain,output_dir,*args):
+    final_data = []
+    for filename in args:
+        if os.path.exists(filename):
+            with open(filename, 'r') as file:
+                final_data.extend(file.readlines())
+    length_before = len(final_data)
+    final_data = set(final_data)
+    cleared_lines = length_before - len(final_data)
+    print(f"{cleared_lines} were filtered.")
+    subdomains_file_name = os.path.join(output_dir,f"{domain}_subdomains.txt")
+    with open(subdomains_file_name, 'w') as file:
+        for line in final_data:
+            file.write(line)
+    return subdomains_file_name
 
 def main(parser:argparse.ArgumentParser):
     logger.info("Starting program...")
     scan_title = input("Give title of the scan: ")
+    SCAN_DIR = os.path.join(DATABASE_DIR,scan_title)
     
     if parser.scan_domain:
         domain = parser.scan_domain
-        amass_result_path = perform_amass_scan(domain, scan_title)
-        httpx_result = perform_httpx_scan(amass_result_path,scan_title)
+        if not os.path.exists(SCAN_DIR):
+            os.mkdir(SCAN_DIR)
+        if os.path.isfile(domain):
+            with open(domain,'r') as file:
+                domain_list = file.read().split()
+        else:
+            domain_list = [domain]
+        for domain in domain_list:
+            amass_result_path = perform_amass_scan(domain, scan_title)
+            github_result_path = perform_github_subdomain_scan(domain, scan_title)
+            subdomains_file_name = merge_files(domain, SCAN_DIR, amass_result_path, github_result_path)
+
+            httpx_result = perform_httpx_scan(subdomains_file_name,scan_title)
         
     logger.info("Autobug ended successfully.")
 
