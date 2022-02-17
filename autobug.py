@@ -1,9 +1,9 @@
 import argparse
-import git
 from pyfiglet import Figlet
 import logging
 import re
 import os
+import difflib as dl
 
 from tools_api.amass_api import Amass_API
 from tools_api.httpx_api import Httpx_API
@@ -24,33 +24,56 @@ consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
 logger.addHandler(consoleHandler)
 
+def mark_files_old(*args):
+    filename_new,extension = os.path.splitext(filename)
+    filename_new = filename_new + "_old" + extension
+    for filename in args:
+        os.rename(filename,filename_new)
+
+
+def compare_reports(filename):
+    filename_old,extension = os.path.splitext(filename)
+    filename_old = filename_old + "_old" + extension
+    difference_list = []
+    if not os.path.exists(filename_old):
+        return difference_list
+    with open(filename,'r') as file:
+        file_data_new = file.readlines()
+        file_data_new.sort()
+    with open(filename_old,'r') as file:
+        file_data_old = file.readlines()
+        file_data_old.sort()
+    for diff in dl.context_diff(file_data_new, file_data_old):
+        print(diff)
+
+    # for lineA,lineB in zip(file_data_new,file_data_old):
+    #     if lineA != lineB:
+    #         difference_list.append((lineA,lineB))
+    return difference_list
+
+    
 def is_inputSafe(user_input):
     re_pattern = re.compile("^\w{3,}\.[a-z]{2,}$")
     return re_pattern.match(user_input)
 
-def perform_github_subdomain_scan(domain,scan_title):
-    SCAN_DIR = os.path.join(DATABASE_DIR,scan_title)
+def perform_github_subdomain_scan(domain,SCAN_DIR):
     github_scan = GithubSubdomain_API()
-    github_result_path = os.path.join(SCAN_DIR,f"github_scan_{scan_title}.txt")
+    github_result_path = os.path.join(SCAN_DIR,f"github_scan_{domain}.txt")
     github_scan.find_subdomains(domain, github_result_path)
     return github_result_path
 
-def perform_amass_scan(domain, scan_title):
-    SCAN_DIR = os.path.join(DATABASE_DIR,scan_title)
-    if not os.path.exists(SCAN_DIR):
-         os.mkdir(SCAN_DIR)
+def perform_amass_scan(domain, SCAN_DIR):
     amass_api = Amass_API()
     if not is_inputSafe(domain):
         print(f"Domain: '{domain}' has wrong format")
     else:
-        amass_result_path = os.path.join(SCAN_DIR,f"amass_scan_{scan_title}.txt")
+        amass_result_path = os.path.join(SCAN_DIR,f"amass_scan_{domain}.txt")
         amass_api.find_subdomains(domain,amass_result_path)
     return amass_result_path
 
-def perform_httpx_scan(amass_result_path, scan_title):
+def perform_httpx_scan(amass_result_path,domain, SCAN_DIR):
     httpx_api = Httpx_API()
-    SCAN_DIR = os.path.join(DATABASE_DIR,scan_title)
-    httpx_result_path = os.path.join(SCAN_DIR,f"httpx_scan_{scan_title}.txt")
+    httpx_result_path = os.path.join(SCAN_DIR,f"httpx_scan_{domain}.txt")
     httpx_api.scan_from_file(amass_result_path,httpx_result_path)
     return httpx_result_path
 
@@ -72,28 +95,52 @@ def merge_files(domain,output_dir,*args):
 
 def main(parser:argparse.ArgumentParser):
     logger.info("Starting program...")
-    scan_title = input("Give title of the scan: ")
-    SCAN_DIR = os.path.join(DATABASE_DIR,scan_title)
     
     if parser.scan_domain:
-        domain = parser.scan_domain
-        if not os.path.exists(SCAN_DIR):
-            os.mkdir(SCAN_DIR)
-        if os.path.isfile(domain):
-            with open(domain,'r') as file:
+        domain_arg = parser.scan_domain
+        if os.path.isfile(domain_arg):
+            with open(domain_arg,'r') as file:
+                scan_title = domain_arg
                 domain_list = file.read().split()
         else:
-            domain_list = [domain]
+            domain_list = [domain_arg]
+            scan_title = domain_arg.split(".")[0]
+        SCAN_DIR = os.path.join(DATABASE_DIR,scan_title)
+        if not os.path.exists(SCAN_DIR):
+            os.mkdir(SCAN_DIR)
         for domain in domain_list:
-            amass_result_path = perform_amass_scan(domain, scan_title)
-            github_result_path = perform_github_subdomain_scan(domain, scan_title)
+            amass_result_path = perform_amass_scan(domain, SCAN_DIR)
+            github_result_path = perform_github_subdomain_scan(domain, SCAN_DIR)
             subdomains_file_name = merge_files(domain, SCAN_DIR, amass_result_path, github_result_path)
-
-            httpx_result = perform_httpx_scan(subdomains_file_name,scan_title)
-        
+            httpx_result = perform_httpx_scan(subdomains_file_name,domain,SCAN_DIR)
+        difference_subdomain_list = compare_reports(subdomains_file_name)
+        difference_httpx_list =  compare_reports(httpx_result)
+        if len(difference_subdomain_list) > 0:
+            logger.warning(f"There are differences in report:{subdomains_file_name}")
+            logger.warning(difference_subdomain_list)
+        elif len(difference_httpx_list) > 0:
+            logger.warning(f"There are differences in report:{httpx_result}")
+            logger.warning(difference_httpx_list)
+        else:
+            mark_files_old(amass_result_path,github_result_path,subdomains_file_name,httpx_result)
     logger.info("Autobug ended successfully.")
 
+def test():
+    subdomains_file_name = ""
+    httpx_result = ""
+    subdomains_file_name = ""
+    difference_subdomain_list = compare_reports(subdomains_file_name)
+    difference_httpx_list =  compare_reports(httpx_result)
+    if len(difference_subdomain_list) > 0:
+        logger.warning(f"There are differences in report:{subdomains_file_name}")
+        logger.warning(difference_subdomain_list)
+    elif len(difference_httpx_list) > 0:
+        logger.warning(f"There are differences in report:{httpx_result}")
+        logger.warning(difference_httpx_list)
+
 if __name__ == '__main__':
+    if not os.environ.get("GITHUB_TOKEN"):
+        logger.error("No GITHUB_TOKEN set in env variables. ")
     if not os.path.isdir(DATABASE_DIR):
         os.mkdir(DATABASE_DIR)
     f = Figlet(font='slant')

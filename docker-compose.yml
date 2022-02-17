@@ -1,0 +1,10 @@
+version: '3.9'
+services:
+  autobug:
+    image: autobug:latest
+    volumes:
+    - ./database:/app/database
+    env_file:
+      - .env
+volumes:
+  database:

@@ -5,7 +5,7 @@ class GithubSubdomain_API():
     
     def __init__(self):
         self.path = "github-subdomains"
-        self.token = os.environ["GITHUB_TOKEN"]
+        self.token = os.environ.get("GITHUB_TOKEN")
 
     def find_subdomains(self,domain,output_filename):
         logger.info(f"Discovering subdomains with {self.path}......")
