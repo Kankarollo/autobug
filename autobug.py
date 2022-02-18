@@ -140,7 +140,7 @@ def test():
 
 if __name__ == '__main__':
     if not os.environ.get("GITHUB_TOKEN"):
-        logger.error("No GITHUB_TOKEN set in env variables. ")
+        logger.warning("No GITHUB_TOKEN set in env variables.")
     if not os.path.isdir(DATABASE_DIR):
         os.mkdir(DATABASE_DIR)
     f = Figlet(font='slant')

@@ -4,7 +4,7 @@ from .api_template import logger
 class GithubSubdomain_API():
     
     def __init__(self):
-        self.path = "github-subdomains"
+        self.path = "github-subdomain"
         self.token = os.environ.get("GITHUB_TOKEN")
 
     def find_subdomains(self,domain,output_filename):
