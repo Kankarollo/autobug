@@ -1,5 +1,13 @@
 # Autobug
 
+## Installation
+
+	``mkdir database``
+	``# Create .env file and place GITHUB_TOKEN there to use github_subdomains scanner.``
+	``docker build . -t autobug:latest``
+	``docker-compose up''
+
+## Quick start
 
 ## Notes:
 1. Wyszukiwanie leaków na githubie 

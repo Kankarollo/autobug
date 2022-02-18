@@ -25,9 +25,9 @@ consoleHandler.setFormatter(logFormatter)
 logger.addHandler(consoleHandler)
 
 def mark_files_old(*args):
-    filename_new,extension = os.path.splitext(filename)
-    filename_new = filename_new + "_old" + extension
     for filename in args:
+        filename_new,extension = os.path.splitext(filename)
+        filename_new = filename_new + "_old" + extension
         os.rename(filename,filename_new)
 
 
