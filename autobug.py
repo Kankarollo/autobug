@@ -43,12 +43,8 @@ def compare_reports(filename):
     with open(filename_old,'r') as file:
         file_data_old = file.readlines()
         file_data_old.sort()
-    for diff in dl.context_diff(file_data_new, file_data_old):
-        print(diff)
 
-    # for lineA,lineB in zip(file_data_new,file_data_old):
-    #     if lineA != lineB:
-    #         difference_list.append((lineA,lineB))
+    difference_list = [diff for diff in dl.context_diff(file_data_new, file_data_old)]
     return difference_list
 
     
@@ -117,12 +113,19 @@ def main(parser:argparse.ArgumentParser):
         difference_httpx_list =  compare_reports(httpx_result)
         if len(difference_subdomain_list) > 0:
             logger.warning(f"There are differences in report:{subdomains_file_name}")
-            logger.warning(difference_subdomain_list)
+            diff_report_filename = "diff_report_subdomains.txt"
+            diff_report_filename = os.path.join(DATABASE_DIR,diff_report_filename)
+            logger.warning(f"Difference report saved in {diff_report_filename}.")
+            with open(diff_report_filename, 'w') as file:
+                file.writelines(difference_subdomain_list)
         elif len(difference_httpx_list) > 0:
             logger.warning(f"There are differences in report:{httpx_result}")
-            logger.warning(difference_httpx_list)
+            diff_report_filename = "diff_report_httpx.txt"
+            logger.warning(f"Difference report saved in {diff_report_filename}.")
+            with open(diff_report_filename, 'w') as file:
+                file.writelines(difference_httpx_list)
         else:
-            mark_files_old(amass_result_path,github_result_path,subdomains_file_name,httpx_result)
+             mark_files_old(amass_result_path,github_result_path,subdomains_file_name,httpx_result)
     logger.info("Autobug ended successfully.")
 
 def test():
