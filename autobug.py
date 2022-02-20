@@ -114,13 +114,14 @@ def main(parser:argparse.ArgumentParser):
         if len(difference_subdomain_list) > 0:
             logger.warning(f"There are differences in report:{subdomains_file_name}")
             diff_report_filename = "diff_report_subdomains.txt"
-            diff_report_filename = os.path.join(DATABASE_DIR,diff_report_filename)
+            diff_report_filename = os.path.join(SCAN_DIR,diff_report_filename)
             logger.warning(f"Difference report saved in {diff_report_filename}.")
             with open(diff_report_filename, 'w') as file:
                 file.writelines(difference_subdomain_list)
         elif len(difference_httpx_list) > 0:
             logger.warning(f"There are differences in report:{httpx_result}")
             diff_report_filename = "diff_report_httpx.txt"
+            diff_report_filename = os.path.join(SCAN_DIR,diff_report_filename)
             logger.warning(f"Difference report saved in {diff_report_filename}.")
             with open(diff_report_filename, 'w') as file:
                 file.writelines(difference_httpx_list)
