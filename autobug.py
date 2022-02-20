@@ -126,7 +126,8 @@ def main(parser:argparse.ArgumentParser):
             with open(diff_report_filename, 'w') as file:
                 file.writelines(difference_httpx_list)
         else:
-             mark_files_old(amass_result_path,github_result_path,subdomains_file_name,httpx_result)
+            logger.info("No changes found from previous scan.")
+            mark_files_old(amass_result_path,github_result_path,subdomains_file_name,httpx_result)
     logger.info("Autobug ended successfully.")
 
 def test():
